@@ -5,51 +5,101 @@
 //  Created by Regiothek on 14.02.26.
 //
 
+
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @Query(sort: \Habit.createdAt, order: .reverse) private var habits: [Habit]
+
+    @State private var isAddSheetPresented = false
 
     var body: some View {
-        NavigationSplitView {
+        NavigationStack {
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+                if habits.isEmpty {
+                    ContentUnavailableView(
+                        "Нет привычек",
+                        systemImage: "checklist",
+                        description: Text("Нажми +, чтобы добавить первую привычку.")
+                    )
+                } else {
+                    ForEach(habits) { habit in
+                        HStack {
+                            Text(habit.title)
+                            Spacer()
+                            Text(habit.createdAt, format: .dateTime.day().month().year())
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .onDelete(perform: deleteHabits)
                 }
-                .onDelete(perform: deleteItems)
             }
+            .navigationTitle("Привычки")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     EditButton()
                 }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        isAddSheetPresented = true
+                    } label: {
+                        Image(systemName: "plus")
                     }
                 }
             }
-        } detail: {
-            Text("Select an item")
+            .sheet(isPresented: $isAddSheetPresented) {
+                AddHabitView { title in
+                    addHabit(title: title)
+                }
+            }
         }
     }
 
-    private func addItem() {
+    private func addHabit(title: String) {
         withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
+            let habit = Habit(title: title)
+            modelContext.insert(habit)
         }
     }
 
-    private func deleteItems(offsets: IndexSet) {
+    private func deleteHabits(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                modelContext.delete(items[index])
+                modelContext.delete(habits[index])
+            }
+        }
+    }
+}
+
+private struct AddHabitView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var title = ""
+
+    let onSave: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Название привычки", text: $title)
+                    .textInputAutocapitalization(.sentences)
+            }
+            .navigationTitle("Новая привычка")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Сохранить") {
+                        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmed.isEmpty else { return }
+                        onSave(trimmed)
+                        dismiss()
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
         }
     }
@@ -57,5 +107,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: Habit.self, inMemory: true)
 }
