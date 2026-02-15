@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  HabitTracker
 //
-//  Created by Regiothek on 14.02.26.
+//  Created by SaltyRain on 14.02.26.
 //
 
 
@@ -27,6 +27,16 @@ struct ContentView: View {
                 } else {
                     ForEach(habits) { habit in
                         HStack {
+                            Button {
+                                withAnimation {
+                                    habit.isCompletedToday.toggle()
+                                }
+                            } label: {
+                                Image(systemName: habit.isCompletedToday ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                            }
+                            .buttonStyle(.plain)
+                            
                             Text(habit.title)
                             Spacer()
                             Text(habit.createdAt, format: .dateTime.day().month().year())
